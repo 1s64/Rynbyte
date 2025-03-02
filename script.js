@@ -1,3 +1,3 @@
-document.getElementById("testButton").addEventListener("click", function() {
-    document.getElementById("result").innerText = "JS Test Successful!";
+document.getElementById("downloadButton").addEventListener("click", function() {
+    document.getElementById("downloadMessage").innerText = "Download Started!";
 });
