@@ -24,6 +24,14 @@ body {
 .tagline {
     font-size: 1.2rem;
     color: #888;
+    margin-bottom: 5px;
+}
+
+.credit {
+    font-size: 1rem;
+    color: #555;
+    font-style: italic;
+    margin-bottom: 20px;
 }
 
 button {
