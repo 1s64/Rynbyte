@@ -92,7 +92,7 @@
     font-size: 1.1rem;
     line-height: 1.6;
   }
-  
+
   /* Footer */
   footer {
     background: rgba(20, 20, 20, 0.8);
@@ -102,6 +102,11 @@
     border-top: 1px solid #6a5acd;
     color: #ccc;
   }
+  
+  footer a {
+    color: #ccc;
+  }
+  
   
   /* Animations */
   @keyframes fadeIn {
