@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rynbyte Proxy</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="icon.png" type="image/png" />
+  
+  <meta property="og:title" content="RynByte Proxy" />
+  <meta property="og:description" content="Simple HTTP(S) proxy for rynbyte.xyz | @1s64" />
+  <meta property="og:image" content="https://rynbyte.xyz/icon.png" />
+  <meta property="og:url" content="https://rynbyte.xyz/" />
+  <meta property="og:type" content="website" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>RynByte Proxy</h1>
+    <form action="/proxy" method="get">
+      <input
+        type="url"
+        name="url"
+        placeholder="https://example.com"
+        required
+      />
+      <button type="submit">Go</button>
+    </form>
+    <p>Enter a full URL (including `https://`).</p>
+  </div>
+</body>
+
+</html>
