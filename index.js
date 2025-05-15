@@ -1,9 +1,9 @@
-app.use(express.static('public'));
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const URL = require('url').URL;
 
 const app = express();
+app.use(express.static('public'));
 
 // Serve a simple homepage
 app.get('/', (req, res) => {
