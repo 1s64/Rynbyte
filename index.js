@@ -1,43 +1,48 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const URL = require('url').URL;
+const { URL } = require('url');
 
 const app = express();
+
+// Serve your static frontend
 app.use(express.static('public'));
 
-// Serve a simple homepage
+// Simple health or info endpoint (optional)
 app.get('/', (req, res) => {
-  res.type('html').send(`
-    <h1>rynbyte.xyz Proxy</h1>
-    <form>
-      <input name="url" placeholder="https://example.com" size="40"/>
-      <button>Go</button>
-    </form>
-  `);
+  res.sendFile(__dirname + '/public/index.html');
 });
 
-// Proxy all other requests via ?url=…
+// Configure a single proxy middleware with dynamic routing
+const proxyMiddleware = createProxyMiddleware({
+  changeOrigin: true,
+  pathRewrite: (path, req) => {
+    // strip the /proxy prefix; query holds the real URL
+    try {
+      const targetUrl = new URL(req.query.url);
+      return targetUrl.pathname + targetUrl.search;
+    } catch {
+      return path;
+    }
+  },
+  router: (req) => {
+    try {
+      return new URL(req.query.url).origin;
+    } catch {
+      return null;
+    }
+  },
+  logLevel: 'warn'
+});
+
+// Use the proxy for anything under /proxy
 app.use('/proxy', (req, res, next) => {
-  const target = req.query.url;
-  if (!target) {
+  if (!req.query.url) {
     return res.status(400).send('Missing ?url= parameter');
   }
-  // Basic validation
-  let parsed;
-  try { parsed = new URL(target); }
-  catch (e) { return res.status(400).send('Invalid URL'); }
-
-  createProxyMiddleware({
-    target: parsed.origin,
-    changeOrigin: true,
-    pathRewrite: {
-      '^/proxy': parsed.pathname + (parsed.search || '')
-    },
-    logLevel: 'warn'
-  })(req, res, next);
+  proxyMiddleware(req, res, next);
 });
 
-// Fallback
+// Fallback for all other routes
 app.use((req, res) => res.status(404).send('Not found'));
 
 const PORT = process.env.PORT || 3000;
