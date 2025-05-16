@@ -4,19 +4,20 @@ const { URL } = require('url');
 
 const app = express();
 
-// Serve your static frontend
+// 1️⃣ Serve your static frontend
 app.use(express.static('public'));
-
-// Simple health or info endpoint (optional)
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
-// Configure a single proxy middleware with dynamic routing
-const proxyMiddleware = createProxyMiddleware({
+// 2️⃣ Create a single proxy middleware with dynamic routing + header / cookie tweaks
+const proxy = createProxyMiddleware('/proxy', {
   changeOrigin: true,
+  followRedirects: true,      // follow HTTP redirects
+  logLevel: 'warn',
+
+  // Rewrite the path based on ?url=…
   pathRewrite: (path, req) => {
-    // strip the /proxy prefix; query holds the real URL
     try {
       const targetUrl = new URL(req.query.url);
       return targetUrl.pathname + targetUrl.search;
@@ -24,25 +25,44 @@ const proxyMiddleware = createProxyMiddleware({
       return path;
     }
   },
-  router: (req) => {
+
+  // Route dynamically to the origin of the ?url
+  router: req => {
     try {
       return new URL(req.query.url).origin;
     } catch {
       return null;
     }
   },
-  logLevel: 'warn'
+
+  // 3️⃣ Strip headers that prevent framing
+  onProxyRes(proxyRes) {
+    delete proxyRes.headers['x-frame-options'];
+    delete proxyRes.headers['content-security-policy'];
+    if (proxyRes.headers['content-security-policy']) {
+      proxyRes.headers['content-security-policy'] =
+        proxyRes.headers['content-security-policy']
+          .replace(/frame-ancestors[^;]+;/g, '');
+    }
+  },
+
+  // 4️⃣ Forward key client headers
+  onProxyReq(proxyReq, req) {
+    const ua = req.get('user-agent');
+    if (ua) proxyReq.setHeader('User-Agent', ua);
+
+    const ref = req.get('referer') || req.originalUrl;
+    proxyReq.setHeader('Referer', ref);
+  },
+
+  // 5️⃣ Rewrite all Set-Cookie domains so cookies persist under your proxy
+  cookieDomainRewrite: { '*': '' },
 });
 
-// Use the proxy for anything under /proxy
-app.use('/proxy', (req, res, next) => {
-  if (!req.query.url) {
-    return res.status(400).send('Missing ?url= parameter');
-  }
-  proxyMiddleware(req, res, next);
-});
+// 6️⃣ Mount it
+app.use(proxy);
 
-// Fallback for all other routes
+// 7️⃣ Fallback handler
 app.use((req, res) => res.status(404).send('Not found'));
 
 const PORT = process.env.PORT || 3000;
