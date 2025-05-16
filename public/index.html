@@ -16,19 +16,98 @@
 </head>
 
 <body>
-  <div class="container">
-    <h1>RynByte Proxy</h1>
-    <form action="/proxy" method="get">
-      <input
-        type="url"
-        name="url"
-        placeholder="https://example.com"
-        required
-      />
+  <!-- HOME VIEW -->
+  <div id="home-view">
+    <div class="wave-bg"></div>
+    <h1>RYNBYTE</h1>
+    <p class="sub">Made by 1s64</p>
+    <form id="goForm">
+      <input type="url" id="homeUrl" placeholder="Search or enter a URL" required/>
       <button type="submit">Go</button>
     </form>
-    <p>Enter a full URL (including `https://`).</p>
   </div>
-</body>
 
+  <!-- BROWSER VIEW (hidden initially) -->
+  <div id="browser-view">
+    <div id="tabbar">
+      <button id="btnBack" disabled>←</button>
+      <button id="btnHome">🏠</button>
+      <input type="text" id="addrBar" readonly />
+      <button id="btnReload">⟳</button>
+      <button id="btnClose">✕</button>
+    </div>
+    <iframe id="webview" src="about:blank"></iframe>
+  </div>
+
+  <script>
+    const homeView = document.getElementById('home-view');
+    const browserView = document.getElementById('browser-view');
+    const goForm     = document.getElementById('goForm');
+    const homeUrl    = document.getElementById('homeUrl');
+    const webview    = document.getElementById('webview');
+    const addrBar    = document.getElementById('addrBar');
+    const btnBack    = document.getElementById('btnBack');
+    const btnReload  = document.getElementById('btnReload');
+    const btnHome    = document.getElementById('btnHome');
+    const btnClose   = document.getElementById('btnClose');
+
+    let historyStack = [];
+    let historyPos   = -1;
+
+    goForm.addEventListener('submit', e => {
+      e.preventDefault();
+      openURL(homeUrl.value);
+    });
+
+    function openURL(raw) {
+      if (!/^https?:\/\//.test(raw)) raw = 'https://' + raw;
+      const proxied = `/proxy?url=${encodeURIComponent(raw)}`;
+      webview.src = proxied;
+      addrBar.value = raw;
+      // manage history
+      historyStack = historyStack.slice(0, historyPos+1);
+      historyStack.push(raw);
+      historyPos++;
+      btnBack.disabled = historyPos <= 0;
+      showBrowser();
+    }
+
+    btnBack.onclick = () => {
+      if (historyPos > 0) {
+        historyPos--;
+        const url = historyStack[historyPos];
+        webview.src = `/proxy?url=${encodeURIComponent(url)}`;
+        addrBar.value = url;
+        btnBack.disabled = historyPos <= 0;
+      }
+    };
+
+    btnReload.onclick = () => {
+      webview.contentWindow.location.reload();
+    };
+
+    btnHome.onclick = () => {
+      webview.src = 'about:blank';
+      addrBar.value = '';
+      historyStack = [];
+      historyPos = -1;
+      btnBack.disabled = true;
+    };
+
+    btnClose.onclick = () => {
+      // back to home view
+      hideBrowser();
+      btnHome.click();
+    };
+
+    function showBrowser() {
+      homeView.style.display = 'none';
+      browserView.style.display = 'flex';
+    }
+    function hideBrowser() {
+      browserView.style.display = 'none';
+      homeView.style.display = 'flex';
+    }
+  </script>
+</body>
 </html>
