@@ -21,18 +21,23 @@
     <div class="wave-bg"></div>
     <h1>RYNBYTE</h1>
     <p class="sub">Made by 1s64</p>
-    <form id="goForm">
-      <input type="url" id="homeUrl" placeholder="Search or enter a URL" required/>
-      <button type="submit">Go</button>
-    </form>
+    <div id="home-search">
+      <input
+        type="url"
+        id="homeUrl"
+        placeholder="Search or enter a URL"
+        autofocus
+      />
+    </div>
   </div>
 
-  <!-- BROWSER VIEW (hidden initially) -->
+  <!-- BROWSER VIEW -->
   <div id="browser-view">
     <div id="tabbar">
-      <button id="btnBack" disabled>←</button>
+      <button id="btnBack" disabled>&lt;</button>
+      <button id="btnForward" disabled>&gt;</button>
       <button id="btnHome">🏠</button>
-      <input type="text" id="addrBar" readonly />
+      <input type="text" id="addrBar" />
       <button id="btnReload">⟳</button>
       <button id="btnClose">✕</button>
     </div>
@@ -40,13 +45,13 @@
   </div>
 
   <script>
-    const homeView = document.getElementById('home-view');
-    const browserView = document.getElementById('browser-view');
-    const goForm     = document.getElementById('goForm');
+    const homeView   = document.getElementById('home-view');
+    const browserView= document.getElementById('browser-view');
     const homeUrl    = document.getElementById('homeUrl');
     const webview    = document.getElementById('webview');
     const addrBar    = document.getElementById('addrBar');
     const btnBack    = document.getElementById('btnBack');
+    const btnForward = document.getElementById('btnForward');
     const btnReload  = document.getElementById('btnReload');
     const btnHome    = document.getElementById('btnHome');
     const btnClose   = document.getElementById('btnClose');
@@ -54,51 +59,75 @@
     let historyStack = [];
     let historyPos   = -1;
 
-    goForm.addEventListener('submit', e => {
-      e.preventDefault();
-      openURL(homeUrl.value);
+    // ENTER on home
+    homeUrl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') openURL(homeUrl.value);
     });
 
-    function openURL(raw) {
-      if (!/^https?:\/\//.test(raw)) raw = 'https://' + raw;
-      const proxied = `/proxy?url=${encodeURIComponent(raw)}`;
-      webview.src = proxied;
-      addrBar.value = raw;
-      // manage history
-      historyStack = historyStack.slice(0, historyPos+1);
-      historyStack.push(raw);
-      historyPos++;
-      btnBack.disabled = historyPos <= 0;
-      showBrowser();
-    }
+    // ENTER on address bar
+    addrBar.addEventListener('keydown', e => {
+      if (e.key === 'Enter') openURL(addrBar.value);
+    });
 
     btnBack.onclick = () => {
       if (historyPos > 0) {
         historyPos--;
-        const url = historyStack[historyPos];
-        webview.src = `/proxy?url=${encodeURIComponent(url)}`;
-        addrBar.value = url;
-        btnBack.disabled = historyPos <= 0;
+        navigateToHistory();
       }
     };
-
+    btnForward.onclick = () => {
+      if (historyPos < historyStack.length - 1) {
+        historyPos++;
+        navigateToHistory();
+      }
+    };
     btnReload.onclick = () => {
       webview.contentWindow.location.reload();
     };
-
     btnHome.onclick = () => {
-      webview.src = 'about:blank';
-      addrBar.value = '';
+      hideBrowser();
+      resetHistory();
+    };
+    btnClose.onclick = () => {
+      hideBrowser();
+      resetHistory();
+    };
+
+    function openURL(raw) {
+      if (!raw) return;
+      if (!/^https?:\/\//.test(raw)) raw = 'https://' + raw;
+      showBrowser();
+      pushHistory(raw);
+      loadURL(raw);
+    }
+
+    function navigateToHistory() {
+      const url = historyStack[historyPos];
+      loadURL(url);
+      btnBack.disabled = historyPos <= 0;
+      btnForward.disabled = historyPos >= historyStack.length - 1;
+    }
+
+    function pushHistory(url) {
+      historyStack = historyStack.slice(0, historyPos + 1);
+      historyStack.push(url);
+      historyPos++;
+      btnBack.disabled = historyPos <= 0;
+      btnForward.disabled = historyPos >= historyStack.length - 1;
+    }
+
+    function loadURL(raw) {
+      addrBar.value = raw;
+      webview.src = `/proxy?url=${encodeURIComponent(raw)}`;
+    }
+
+    function resetHistory() {
       historyStack = [];
       historyPos = -1;
-      btnBack.disabled = true;
-    };
-
-    btnClose.onclick = () => {
-      // back to home view
-      hideBrowser();
-      btnHome.click();
-    };
+      btnBack.disabled = btnForward.disabled = true;
+      addrBar.value = '';
+      webview.src = 'about:blank';
+    }
 
     function showBrowser() {
       homeView.style.display = 'none';
@@ -107,7 +136,12 @@
     function hideBrowser() {
       browserView.style.display = 'none';
       homeView.style.display = 'flex';
+      homeUrl.value = '';
+      homeUrl.focus();
     }
+
+    // Start on home view
+    hideBrowser();
   </script>
 </body>
 </html>
