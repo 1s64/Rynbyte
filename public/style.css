@@ -30,49 +30,42 @@ body {
 }
 
 #home-view h1 {
-  font-size: 4rem;
+  font-size: 5rem;
+  letter-spacing: 2px;
   z-index: 1;
 }
 
 #home-view .sub {
-  margin-bottom: 1rem;
+  margin-top: 0.5rem;
   color: #888;
   z-index: 1;
 }
 
-#home-view form {
+#home-search {
   z-index: 1;
+  margin-top: 2rem;
   width: 80%;
-  max-width: 600px;
+  max-width: 800px;
+  height: 60px;
+  background: #2b2b2b;
+  border-radius: 10px;
   display: flex;
-  margin-top: 1rem;
+  align-items: center;
+  padding: 0 20px;
 }
 
-#home-view input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 4px 0 0 4px;
+#home-search input {
+  width: 100%;
   border: none;
-  font-size: 1rem;
-}
-
-#home-view button {
-  padding: 0.75rem 1rem;
-  border: none;
-  background: #4caf50;
-  color: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-  border-radius: 0 4px 4px 0;
-}
-
-#home-view button:hover {
-  background: #45a049;
+  background: none;
+  color: #ddd;
+  font-size: 1.2rem;
+  outline: none;
 }
 
 /* BROWSER VIEW */
 #browser-view {
-  display: none;
+  display: flex;
   flex-direction: column;
   height: 100%;
 }
@@ -106,6 +99,7 @@ body {
   border-radius: 4px;
   color: #fff;
   font-size: 0.9rem;
+  outline: none;
 }
 
 #iframes, #webview {
