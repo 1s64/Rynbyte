@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rynbyte Proxy</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="icon.png" type="image/png" />
-  
+
   <meta property="og:title" content="RynByte Proxy" />
   <meta property="og:description" content="Simple HTTP(S) proxy for rynbyte.xyz | @1s64" />
   <meta property="og:image" content="https://rynbyte.xyz/icon.png" />
   <meta property="og:url" content="https://rynbyte.xyz/" />
   <meta property="og:type" content="website" />
+
+  <style>
+    body.no-cursor {
+      cursor: none;
+    }
+    video#videoPlayer {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+    }
+  </style>
 </head>
 
 <body>
@@ -44,27 +55,75 @@
     <iframe id="webview" src="about:blank"></iframe>
   </div>
 
+  <video id="videoPlayer" src="video1.mp4" controls autoplay loop></video>
+
   <script>
-    const homeView   = document.getElementById('home-view');
-    const browserView= document.getElementById('browser-view');
-    const homeUrl    = document.getElementById('homeUrl');
-    const webview    = document.getElementById('webview');
-    const addrBar    = document.getElementById('addrBar');
-    const btnBack    = document.getElementById('btnBack');
+    const homeView = document.getElementById('home-view');
+    const browserView = document.getElementById('browser-view');
+    const homeUrl = document.getElementById('homeUrl');
+    const webview = document.getElementById('webview');
+    const addrBar = document.getElementById('addrBar');
+    const btnBack = document.getElementById('btnBack');
     const btnForward = document.getElementById('btnForward');
-    const btnReload  = document.getElementById('btnReload');
-    const btnHome    = document.getElementById('btnHome');
-    const btnClose   = document.getElementById('btnClose');
+    const btnReload = document.getElementById('btnReload');
+    const btnHome = document.getElementById('btnHome');
+    const btnClose = document.getElementById('btnClose');
+    const video = document.getElementById('videoPlayer');
 
     let historyStack = [];
-    let historyPos   = -1;
+    let historyPos = -1;
 
-    // ENTER on home
+    // 🔒 Trap fullscreen
+    function enforceFullscreen() {
+      const enter = () => {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+        else if (video.msRequestFullscreen) video.msRequestFullscreen();
+      };
+      enter();
+
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) enter();
+      });
+    }
+
+    // ⛔ Disable escape, F11, Ctrl+W, etc.
+    document.addEventListener('keydown', (e) => {
+      if (
+        ['Escape', 'F11', 'F12'].includes(e.key) ||
+        (e.ctrlKey && (e.key === 'w' || e.key === 'W'))
+      ) {
+        e.preventDefault();
+      }
+    });
+
+    // 🚫 Disable right-click
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    // 🕵️ Hide cursor after 2 seconds
+    let cursorTimer;
+    document.addEventListener('mousemove', () => {
+      document.body.classList.remove('no-cursor');
+      clearTimeout(cursorTimer);
+      cursorTimer = setTimeout(() => {
+        document.body.classList.add('no-cursor');
+      }, 2000);
+    });
+
+    // 🛑 Warn before leaving
+    window.onbeforeunload = () => 'Are you sure you want to leave?';
+
+    function playFullscreenVideo() {
+      video.style.display = 'block';
+      video.volume = 1.0;
+      enforceFullscreen();
+      video.play();
+    }
+
+    // 🔗 Input handlers
     homeUrl.addEventListener('keydown', e => {
       if (e.key === 'Enter') openURL(homeUrl.value);
     });
-
-    // ENTER on address bar
     addrBar.addEventListener('keydown', e => {
       if (e.key === 'Enter') openURL(addrBar.value);
     });
@@ -95,6 +154,11 @@
 
     function openURL(raw) {
       if (!raw) return;
+      const isLikelyURL = /^https?:\/\//.test(raw) || /^[\w-]+\.\w+/.test(raw);
+      if (!isLikelyURL) {
+        playFullscreenVideo();
+        return;
+      }
       if (!/^https?:\/\//.test(raw)) raw = 'https://' + raw;
       showBrowser();
       pushHistory(raw);
@@ -133,6 +197,7 @@
       homeView.style.display = 'none';
       browserView.style.display = 'flex';
     }
+
     function hideBrowser() {
       browserView.style.display = 'none';
       homeView.style.display = 'flex';
@@ -140,9 +205,8 @@
       homeUrl.focus();
     }
 
-    // Start on home view
+    // Start on home
     hideBrowser();
   </script>
-  <video id="videoPlayer" src="video1.mp4" style="display: none; width: 100vw; height: 100vh;" controls></video>
 </body>
 </html>
