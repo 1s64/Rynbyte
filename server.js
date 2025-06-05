@@ -2,6 +2,7 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const axios = require('axios');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,6 +12,52 @@ const server = app.listen(port, () => {
 
 const wss = new WebSocketServer({ server });
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+
+// Telegram webhook configuration
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN; // Set this in your environment
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;   // Set this in your environment
+
+// Terms acceptance endpoint
+app.post('/api/accept-terms', async (req, res) => {
+  try {
+    // Get user's real IP address
+    const userIP = req.headers['x-forwarded-for'] || 
+                   req.headers['x-real-ip'] || 
+                   req.connection.remoteAddress || 
+                   req.socket.remoteAddress ||
+                   (req.connection.socket ? req.connection.socket.remoteAddress : null);
+
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const timestamp = new Date().toISOString();
+    const acceptedTerms = req.body.acceptedTerms;
+
+    // Prepare message for Telegram
+    const message = `🎮 *RynByte Pong - Terms Accepted*\n\n` +
+                   `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
+                   `🌐 *IP Address:* \`${userIP}\`\n` +
+                   `🖥️ *User Agent:* ${userAgent}\n` +
+                   `✅ *Terms Accepted:* ${acceptedTerms ? 'Yes' : 'No'}\n` +
+                   `📊 *Purpose:* Personalization & Analytics`;
+
+    // Send to Telegram webhook if configured
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
+        parse_mode: 'Markdown'
+      });
+      console.log('Terms acceptance logged to Telegram');
+    } else {
+      console.log('Terms accepted:', { userIP, timestamp, userAgent });
+    }
+
+    res.json({ success: true, message: 'Terms acceptance recorded' });
+  } catch (error) {
+    console.error('Error processing terms acceptance:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 const rooms = {};
 const gameStates = {};
