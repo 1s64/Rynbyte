@@ -1,66 +1,77 @@
 const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
+const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const port = process.env.PORT || 3000;
+
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+const wss = new WebSocketServer({ server });
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
 
-app.use(express.static('public'));
+function generateRoomCode() {
+  return Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+
+function generateGuestName() {
+  return `Guest#${Math.floor(1000 + Math.random() * 9000)}`;
+}
 
 wss.on('connection', (ws) => {
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      const { type, room, payload } = data;
+  ws.on('message', (data) => {
+    const msg = JSON.parse(data);
+    console.log('Received:', msg);
 
-      switch (type) {
-        case 'create':
-          const roomId = uuidv4().slice(0, 6);
-          rooms[roomId] = [ws];
-          ws.roomId = roomId;
-          ws.send(JSON.stringify({ type: 'room_created', roomId }));
-          break;
+    if (msg.type === 'create') {
+      const roomId = generateRoomCode();
+      const guest = generateGuestName();
+      ws.roomId = roomId;
+      ws.username = guest;
 
-        case 'join':
-          if (rooms[room] && rooms[room].length === 1) {
-            rooms[room].push(ws);
-            ws.roomId = room;
-            rooms[room].forEach(client => {
-              client.send(JSON.stringify({ type: 'start_game' }));
-            });
-          } else {
-            ws.send(JSON.stringify({ type: 'error', message: 'Room full or not found' }));
-          }
-          break;
+      rooms[roomId] = [ws];
+      ws.send(JSON.stringify({ type: 'room_created', roomId, username: guest }));
+    }
 
-        case 'update':
-          if (ws.roomId && rooms[ws.roomId]) {
-            rooms[ws.roomId].forEach(client => {
-              if (client !== ws) {
-                client.send(JSON.stringify({ type: 'update', payload }));
-              }
-            });
-          }
-          break;
+    if (msg.type === 'join') {
+      const room = rooms[msg.room];
+      if (!room || room.length >= 2) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Room full or does not exist' }));
+        return;
       }
-    } catch (e) {
-      console.error('Invalid message:', e);
+
+      const guest = generateGuestName();
+      ws.roomId = msg.room;
+      ws.username = guest;
+      room.push(ws);
+
+      // Notify both players
+      room.forEach(sock =>
+        sock.send(JSON.stringify({
+          type: 'player_joined',
+          players: room.map(w => w.username)
+        }))
+      );
+
+      if (room.length === 2) {
+        room.forEach(sock =>
+          sock.send(JSON.stringify({ type: 'start_game' }))
+        );
+      }
     }
   });
 
   ws.on('close', () => {
-    if (ws.roomId && rooms[ws.roomId]) {
-      rooms[ws.roomId] = rooms[ws.roomId].filter(c => c !== ws);
-      if (rooms[ws.roomId].length === 0) delete rooms[ws.roomId];
+    const roomId = ws.roomId;
+    if (roomId && rooms[roomId]) {
+      rooms[roomId] = rooms[roomId].filter(s => s !== ws);
+      if (rooms[roomId].length === 0) delete rooms[roomId];
     }
   });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });
