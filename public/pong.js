@@ -14,6 +14,7 @@ let username = '';
 let players = [];
 let gameStarted = false;
 let playerIndex = 0; // 0 for left player, 1 for right player
+let termsAccepted = false;
 
 // Game objects
 const game = {
@@ -43,9 +44,74 @@ const game = {
 };
 
 playBtn.onclick = () => {
+  if (!termsAccepted) {
+    showTermsModal();
+    return;
+  }
   menu.classList.add('hidden');
   roomChoice.classList.remove('hidden');
 };
+
+// Terms of Service Modal Functions
+function showTermsModal() {
+  const modal = document.getElementById('termsModal');
+  modal.style.display = 'flex';
+}
+
+function hideTermsModal() {
+  const modal = document.getElementById('termsModal');
+  modal.style.display = 'none';
+}
+
+function toggleFullTerms() {
+  const shortTerms = document.getElementById('shortTerms');
+  const fullTerms = document.getElementById('fullTerms');
+  const toggleBtn = document.getElementById('toggleTermsBtn');
+  
+  if (fullTerms.style.display === 'none' || !fullTerms.style.display) {
+    shortTerms.style.display = 'none';
+    fullTerms.style.display = 'block';
+    toggleBtn.textContent = 'Show Less';
+  } else {
+    shortTerms.style.display = 'block';
+    fullTerms.style.display = 'none';
+    toggleBtn.textContent = 'Show Full Terms';
+  }
+}
+
+async function acceptTerms() {
+  try {
+    // Get user's IP and send to webhook
+    const response = await fetch('/api/accept-terms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        acceptedTerms: true
+      })
+    });
+    
+    if (response.ok) {
+      termsAccepted = true;
+      hideTermsModal();
+      menu.classList.add('hidden');
+      roomChoice.classList.remove('hidden');
+    } else {
+      alert('Error processing terms acceptance. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error accepting terms:', error);
+    alert('Connection error. Please check your internet and try again.');
+  }
+}
+
+function declineTerms() {
+  alert('You must accept the Terms of Service to use RynByte Pong.');
+  // Optionally redirect away or show alternative message
+}
 
 function connectSocket(onOpenCallback) {
   socket = new WebSocket(`wss://${location.host}`);
