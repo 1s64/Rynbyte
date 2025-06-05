@@ -270,12 +270,17 @@ function handleMessage(event) {
         
       case 'player_joined':
         players = msg.players;
+        // Fix: Properly assign player index based on join order
         if (players.length === 1) {
           alert(`Players in room: ${players.join(', ')}\nWaiting for another player...`);
-        } else {
+          playerIndex = 0; // First player is always left paddle
+        } else if (players.length === 2) {
           alert(`Players in room: ${players.join(', ')}\nGame starting in 3 seconds!`);
-          if (username === players[1]) {
-            playerIndex = 1;
+          // Fix: Second player to join gets right paddle
+          if (username === players[0]) {
+            playerIndex = 0; // Left paddle
+          } else {
+            playerIndex = 1; // Right paddle
           }
         }
         break;
