@@ -13,121 +13,129 @@ let roomId = null;
 let username = '';
 let players = [];
 let gameStarted = false;
-let playerIndex = 0; // 0 for left player, 1 for right player
+let playerIndex = 0;
 let termsAccepted = false;
 let gameEnded = false;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 3;
 
-// Game objects - client only displays, doesn't update physics
+// Client-side prediction and interpolation
+let lastServerUpdate = 0;
+let serverGameState = null;
+let clientGameState = null;
+let interpolationBuffer = [];
+const INTERPOLATION_DELAY = 100; // 100ms delay for smooth interpolation
+
+// Input throttling
+let lastInputSent = 0;
+const INPUT_THROTTLE = 16; // Send input every 16ms (60 FPS)
+
+// Game objects with interpolation
 const game = {
-  ball: {
-    x: 300,
-    y: 200,
-    radius: 8
-  },
+  ball: { x: 300, y: 200, radius: 8 },
   paddleHeight: 80,
   paddleWidth: 10,
   paddleSpeed: 6,
-  leftPaddle: {
-    x: 20,
-    y: 160
-  },
-  rightPaddle: {
-    x: 570,
-    y: 160
-  },
-  scores: [0, 0],
-  keys: {
-    up: false,
-    down: false
-  }
+  leftPaddle: { x: 20, y: 160 },
+  rightPaddle: { x: 570, y: 160 },
+  scores: [0, 0]
 };
 
-// Input handling
+// Smooth input handling
 const inputState = { up: false, down: false };
-let lastInputSent = { up: false, down: false };
+let lastInputState = { up: false, down: false };
 
-// Keyboard controls
-document.addEventListener('keydown', (e) => {
+// Optimized input handling with throttling
+function handleInput(key, pressed) {
   if (!gameStarted) return;
   
-  switch(e.code) {
+  let changed = false;
+  switch(key) {
     case 'ArrowUp':
     case 'KeyW':
-      e.preventDefault();
-      inputState.up = true;
+      if (inputState.up !== pressed) {
+        inputState.up = pressed;
+        changed = true;
+      }
       break;
     case 'ArrowDown':
     case 'KeyS':
-      e.preventDefault();
-      inputState.down = true;
+      if (inputState.down !== pressed) {
+        inputState.down = pressed;
+        changed = true;
+      }
       break;
   }
-  sendInputIfChanged();
-});
-
-document.addEventListener('keyup', (e) => {
-  if (!gameStarted) return;
   
-  switch(e.code) {
-    case 'ArrowUp':
-    case 'KeyW':
-      e.preventDefault();
-      inputState.up = false;
-      break;
-    case 'ArrowDown':
-    case 'KeyS':
-      e.preventDefault();
-      inputState.down = false;
-      break;
+  if (changed) {
+    sendInputThrottled();
   }
-  sendInputIfChanged();
-});
+}
 
-// Touch controls for mobile
-let touchStartY = 0;
-canvas.addEventListener('touchstart', (e) => {
-  if (!gameStarted) return;
-  e.preventDefault();
-  touchStartY = e.touches[0].clientY;
-});
-
-canvas.addEventListener('touchmove', (e) => {
-  if (!gameStarted) return;
-  e.preventDefault();
+// Throttled input sending
+function sendInputThrottled() {
+  const now = Date.now();
+  if (now - lastInputSent < INPUT_THROTTLE) return;
   
-  const touchY = e.touches[0].clientY;
-  const deltaY = touchY - touchStartY;
-  
-  if (Math.abs(deltaY) > 10) {
-    inputState.up = deltaY < 0;
-    inputState.down = deltaY > 0;
-    sendInputIfChanged();
-  }
-});
-
-canvas.addEventListener('touchend', (e) => {
-  if (!gameStarted) return;
-  e.preventDefault();
-  inputState.up = false;
-  inputState.down = false;
-  sendInputIfChanged();
-});
-
-function sendInputIfChanged() {
   if (!socket || socket.readyState !== WebSocket.OPEN) return;
   
-  if (inputState.up !== lastInputSent.up || inputState.down !== lastInputSent.down) {
+  if (inputState.up !== lastInputState.up || inputState.down !== lastInputState.down) {
     socket.send(JSON.stringify({
       type: 'paddle_input',
       up: inputState.up,
       down: inputState.down
     }));
     
-    lastInputSent = { ...inputState };
+    lastInputState = { ...inputState };
+    lastInputSent = now;
   }
 }
+
+// Keyboard events
+document.addEventListener('keydown', (e) => {
+  e.preventDefault();
+  handleInput(e.code, true);
+});
+
+document.addEventListener('keyup', (e) => {
+  e.preventDefault();
+  handleInput(e.code, false);
+});
+
+// Improved touch controls
+let touchActive = false;
+let touchY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+  if (!gameStarted) return;
+  e.preventDefault();
+  touchActive = true;
+  touchY = e.touches[0].clientY;
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!gameStarted || !touchActive) return;
+  e.preventDefault();
+  
+  const currentY = e.touches[0].clientY;
+  const deltaY = currentY - touchY;
+  
+  // More responsive touch controls
+  inputState.up = deltaY < -5;
+  inputState.down = deltaY > 5;
+  sendInputThrottled();
+  
+  touchY = currentY;
+});
+
+canvas.addEventListener('touchend', (e) => {
+  if (!gameStarted) return;
+  e.preventDefault();
+  touchActive = false;
+  inputState.up = false;
+  inputState.down = false;
+  sendInputThrottled();
+});
 
 // UI Event Handlers
 playBtn.onclick = () => {
@@ -162,7 +170,6 @@ joinBtn.onclick = () => {
   });
 };
 
-// Allow Enter key to join room
 roomInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     joinBtn.click();
@@ -233,7 +240,7 @@ function declineTerms() {
   alert('You must accept the Terms of Service to use RynByte Pong.');
 }
 
-// WebSocket Connection Management
+// Enhanced WebSocket Connection Management
 function connectSocket(onOpenCallback) {
   if (socket) {
     socket.close();
@@ -258,30 +265,25 @@ function connectSocket(onOpenCallback) {
 function handleMessage(event) {
   try {
     const msg = JSON.parse(event.data);
-    console.log('Received:', msg);
     
     switch(msg.type) {
       case 'room_created':
         roomId = msg.roomId;
         username = msg.username;
-        playerIndex = 0;
+        playerIndex = 0; // Creator is always left paddle
         alert(`Room created: ${roomId}\nShare this code with a friend!\nWaiting for another player...`);
         break;
         
       case 'player_joined':
         players = msg.players;
-        // Fix: Properly assign player index based on join order
+        // Fixed player index assignment
         if (players.length === 1) {
           alert(`Players in room: ${players.join(', ')}\nWaiting for another player...`);
           playerIndex = 0; // First player is always left paddle
         } else if (players.length === 2) {
           alert(`Players in room: ${players.join(', ')}\nGame starting in 3 seconds!`);
-          // Fix: Second player to join gets right paddle
-          if (username === players[0]) {
-            playerIndex = 0; // Left paddle
-          } else {
-            playerIndex = 1; // Right paddle
-          }
+          // Assign based on username position in array
+          playerIndex = players.indexOf(username);
         }
         break;
         
@@ -290,10 +292,7 @@ function handleMessage(event) {
         break;
         
       case 'game_update':
-        updateGameState(msg.gameState);
-        if (msg.scoreEvent) {
-          showScoreNotification();
-        }
+        handleGameUpdate(msg);
         break;
         
       case 'game_end':
@@ -317,6 +316,83 @@ function handleMessage(event) {
   } catch (error) {
     console.error('Error parsing message:', error);
   }
+}
+
+// Enhanced game update handling with interpolation
+function handleGameUpdate(msg) {
+  const now = Date.now();
+  
+  // Store server state with timestamp
+  serverGameState = {
+    ...msg.gameState,
+    timestamp: now,
+    scoreEvent: msg.scoreEvent
+  };
+  
+  // Add to interpolation buffer
+  interpolationBuffer.push({
+    state: { ...msg.gameState },
+    timestamp: now
+  });
+  
+  // Keep buffer size manageable
+  if (interpolationBuffer.length > 10) {
+    interpolationBuffer.shift();
+  }
+  
+  // Handle score events
+  if (msg.scoreEvent) {
+    showScoreNotification();
+  }
+  
+  lastServerUpdate = now;
+}
+
+// Interpolation function for smooth rendering
+function getInterpolatedState() {
+  if (!serverGameState || interpolationBuffer.length < 2) {
+    return serverGameState;
+  }
+  
+  const now = Date.now();
+  const renderTime = now - INTERPOLATION_DELAY;
+  
+  // Find the two states to interpolate between
+  let before = null;
+  let after = null;
+  
+  for (let i = 0; i < interpolationBuffer.length - 1; i++) {
+    if (interpolationBuffer[i].timestamp <= renderTime && 
+        interpolationBuffer[i + 1].timestamp >= renderTime) {
+      before = interpolationBuffer[i];
+      after = interpolationBuffer[i + 1];
+      break;
+    }
+  }
+  
+  if (!before || !after) {
+    return serverGameState;
+  }
+  
+  // Linear interpolation
+  const timeDiff = after.timestamp - before.timestamp;
+  const factor = timeDiff > 0 ? (renderTime - before.timestamp) / timeDiff : 0;
+  
+  return {
+    ball: {
+      x: lerp(before.state.ball.x, after.state.ball.x, factor),
+      y: lerp(before.state.ball.y, after.state.ball.y, factor)
+    },
+    paddles: [
+      lerp(before.state.paddles[0], after.state.paddles[0], factor),
+      lerp(before.state.paddles[1], after.state.paddles[1], factor)
+    ],
+    scores: after.state.scores
+  };
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * Math.max(0, Math.min(1, t));
 }
 
 function handleDisconnect(event) {
@@ -346,20 +422,15 @@ function startGame() {
   roomChoice.classList.add('hidden');
   gameSection.classList.remove('hidden');
   
-  // Start render loop
+  // Initialize interpolation
+  interpolationBuffer = [];
+  lastServerUpdate = Date.now();
+  
+  // Start smooth render loop
   gameLoop();
 }
 
-function updateGameState(serverState) {
-  game.ball.x = serverState.ball.x;
-  game.ball.y = serverState.ball.y;
-  game.leftPaddle.y = serverState.paddles[0];
-  game.rightPaddle.y = serverState.paddles[1];
-  game.scores = serverState.scores;
-}
-
 function showScoreNotification() {
-  // Create a visual score notification
   const notification = document.createElement('div');
   notification.textContent = `${game.scores[0]} - ${game.scores[1]}`;
   notification.style.cssText = `
@@ -408,31 +479,41 @@ function resetToMenu() {
   playerIndex = 0;
   reconnectAttempts = 0;
   
-  // Reset input states
+  // Reset states
   inputState.up = false;
   inputState.down = false;
-  lastInputSent = { up: false, down: false };
+  lastInputState = { up: false, down: false };
+  interpolationBuffer = [];
+  serverGameState = null;
   
-  // Close socket
   if (socket) {
     socket.close();
     socket = null;
   }
   
-  // Show menu
   gameSection.classList.add('hidden');
   roomChoice.classList.add('hidden');
   menu.classList.remove('hidden');
-  
-  // Clear room input
   roomInput.value = '';
 }
 
-// Rendering
+// Smooth rendering with interpolation
 function gameLoop() {
   if (!gameStarted) return;
   
-  // Clear canvas
+  // Get interpolated state for smooth rendering
+  const renderState = getInterpolatedState() || serverGameState;
+  
+  if (renderState) {
+    // Update local game state for rendering
+    game.ball.x = renderState.ball.x;
+    game.ball.y = renderState.ball.y;
+    game.leftPaddle.y = renderState.paddles[0];
+    game.rightPaddle.y = renderState.paddles[1];
+    game.scores = renderState.scores;
+  }
+  
+  // Clear canvas with better performance
   ctx.fillStyle = '#222';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
@@ -452,13 +533,11 @@ function gameLoop() {
   ctx.fillRect(game.rightPaddle.x, game.rightPaddle.y, game.paddleWidth, game.paddleHeight);
   
   // Highlight current player's paddle
+  ctx.strokeStyle = '#4CAF50';
+  ctx.lineWidth = 3;
   if (playerIndex === 0) {
-    ctx.strokeStyle = '#4CAF50';
-    ctx.lineWidth = 3;
     ctx.strokeRect(game.leftPaddle.x - 1, game.leftPaddle.y - 1, game.paddleWidth + 2, game.paddleHeight + 2);
   } else {
-    ctx.strokeStyle = '#4CAF50';
-    ctx.lineWidth = 3;
     ctx.strokeRect(game.rightPaddle.x - 1, game.rightPaddle.y - 1, game.paddleWidth + 2, game.paddleHeight + 2);
   }
   
@@ -482,11 +561,11 @@ function gameLoop() {
   ctx.fillStyle = playerIndex === 1 ? '#4CAF50' : '#888';
   ctx.fillText('YOU', (canvas.width * 3) / 4, 90);
   
-  // Continue loop
+  // Continue loop at display refresh rate
   requestAnimationFrame(gameLoop);
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('RynByte Pong loaded');
+  console.log('RynByte Pong loaded with smooth interpolation');
 });
