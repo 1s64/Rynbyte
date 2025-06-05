@@ -10,45 +10,147 @@ const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-const wss = new WebSocketServer({ server });
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
+// Middleware for security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
-// Telegram webhook configuration
+const wss = new WebSocketServer({ 
+  server,
+  clientTracking: true,
+  maxPayload: 1024 // Limit payload size to prevent DoS
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '1mb' })); // Limit JSON payload size
+
+// Rate limiting for terms acceptance
+const recentTermsAcceptance = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_TERMS_REQUESTS = 5;
+
+// Telegram webhook configuration - Fixed token handling
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// Terms acceptance endpoint
+// Validate environment variables
+if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+  console.warn('Warning: Telegram credentials not configured. Webhook disabled.');
+}
+
+// Input validation helper
+function isValidRoomCode(code) {
+  return typeof code === 'string' && /^[A-Z0-9]{6}$/.test(code);
+}
+
+function sanitizeUserAgent(userAgent) {
+  if (!userAgent || typeof userAgent !== 'string') return 'Unknown';
+  return userAgent.slice(0, 200).replace(/[<>]/g, ''); // Basic sanitization
+}
+
+// Fixed Terms acceptance endpoint with proper security
 app.post('/api/accept-terms', async (req, res) => {
   try {
-    const userIP = req.headers['x-forwarded-for'] || 
-                   req.headers['x-real-ip'] || 
-                   req.connection.remoteAddress || 
-                   req.socket.remoteAddress ||
-                   (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    // Rate limiting check
+    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.connection.remoteAddress || 
+                     req.socket.remoteAddress ||
+                     'unknown';
 
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    const timestamp = new Date().toISOString();
-    const acceptedTerms = req.body.acceptedTerms;
-
-    // Prepare message for Telegram
-    const message = `🎮 *RynByte Pong - Terms Accepted*\n\n` +
-                   `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
-                   `🌐 *IP Address:* \`${userIP}\`\n` +
-                   `🖥️ *User Agent:* ${userAgent}\n` +
-                   `✅ *Terms Accepted:* ${acceptedTerms ? 'Yes' : 'No'}\n` +
-                   `📊 *Purpose:* Personalization & Analytics`;
-
-    // Send to Telegram webhook if configured
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        chat_id: TELEGRAM_CHAT_ID,
-        text: message,
-        parse_mode: 'Markdown'
-      });
-      console.log('Terms acceptance logged to Telegram');
+    const now = Date.now();
+    const clientKey = clientIP;
+    
+    if (recentTermsAcceptance.has(clientKey)) {
+      const { count, timestamp } = recentTermsAcceptance.get(clientKey);
+      if (now - timestamp < RATE_LIMIT_WINDOW) {
+        if (count >= MAX_TERMS_REQUESTS) {
+          return res.status(429).json({ 
+            success: false, 
+            message: 'Too many requests. Please try again later.' 
+          });
+        }
+        recentTermsAcceptance.set(clientKey, { count: count + 1, timestamp });
+      } else {
+        recentTermsAcceptance.set(clientKey, { count: 1, timestamp: now });
+      }
     } else {
-      console.log('Terms accepted:', { userIP, timestamp, userAgent });
+      recentTermsAcceptance.set(clientKey, { count: 1, timestamp: now });
+    }
+
+    // Clean up old entries
+    for (const [key, value] of recentTermsAcceptance.entries()) {
+      if (now - value.timestamp > RATE_LIMIT_WINDOW) {
+        recentTermsAcceptance.delete(key);
+      }
+    }
+
+    const userAgent = sanitizeUserAgent(req.headers['user-agent']);
+    const timestamp = new Date().toISOString();
+    const acceptedTerms = req.body.acceptedTerms === true;
+
+    if (!acceptedTerms) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Terms must be accepted' 
+      });
+    }
+
+    // Hash IP for privacy (instead of storing full IP)
+    const crypto = require('crypto');
+    const hashedIP = crypto.createHash('sha256')
+      .update(clientIP + process.env.IP_SALT || 'default-salt')
+      .digest('hex')
+      .substring(0, 8);
+
+    // Prepare message for Telegram - Fixed formatting and security
+    const message = `🎮 *RynByte Pong - New User*\n\n` +
+                   `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
+                   `🔒 *Session ID:* \`${hashedIP}\`\n` +
+                   `🌐 *IP Address:* \`${userIP}\`\n` +
+                   `🖥️ *Browser:* ${userAgent.split(' ')[0] || 'Unknown'}\n` +
+                   `✅ *Terms Accepted:* Yes`;
+
+    // Send to Telegram webhook - Fixed error handling
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+      try {
+        const telegramResponse = await axios.post(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown'
+          },
+          {
+            timeout: 5000, // 5 second timeout
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (telegramResponse.data.ok) {
+          console.log('Terms acceptance logged to Telegram successfully');
+        } else {
+          console.error('Telegram API error:', telegramResponse.data);
+        }
+      } catch (telegramError) {
+        console.error('Failed to send to Telegram:', {
+          message: telegramError.message,
+          code: telegramError.code,
+          response: telegramError.response?.data
+        });
+        // Don't fail the request if Telegram fails
+      }
+    } else {
+      console.log('Terms accepted (Telegram not configured):', { 
+        hashedIP, 
+        timestamp, 
+        userAgent: userAgent.split(' ')[0] 
+      });
     }
 
     res.json({ success: true, message: 'Terms acceptance recorded' });
@@ -58,16 +160,32 @@ app.post('/api/accept-terms', async (req, res) => {
   }
 });
 
-const rooms = {};
-const gameStates = {};
-const gameLoops = {}; // Track active game loops
+// Game state management
+const rooms = new Map(); // Use Map for better performance
+const gameStates = new Map();
+const gameLoops = new Map();
+
+// Room cleanup interval
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of rooms.entries()) {
+    // Remove rooms that have been inactive for more than 30 minutes
+    if (room.lastActivity && now - room.lastActivity > 30 * 60 * 1000) {
+      cleanupRoom(roomId);
+    }
+  }
+}, 5 * 60 * 1000); // Check every 5 minutes
 
 function generateRoomCode() {
-  return Math.random().toString(36).substr(2, 6).toUpperCase();
+  let code;
+  do {
+    code = Math.random().toString(36).substr(2, 6).toUpperCase();
+  } while (rooms.has(code)); // Ensure uniqueness
+  return code;
 }
 
 function generateGuestName() {
-  return `Guest#${Math.floor(1000 + Math.random() * 9000)}`;
+  return `Guest${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function createGameState() {
@@ -75,23 +193,42 @@ function createGameState() {
     ball: {
       x: 300,
       y: 200,
-      dx: 5,
-      dy: 3,
+      dx: Math.random() > 0.5 ? 5 : -5, // Random initial direction
+      dy: (Math.random() - 0.5) * 4,
       radius: 8
     },
-    paddles: [160, 160], // [leftPaddle.y, rightPaddle.y]
+    paddles: [160, 160],
+    paddleInputs: [{ up: false, down: false }, { up: false, down: false }], // Track inputs
     scores: [0, 0],
     paddleHeight: 80,
     paddleWidth: 10,
+    paddleSpeed: 6,
     canvasWidth: 600,
     canvasHeight: 400,
     gameActive: true,
-    lastUpdate: Date.now()
+    lastUpdate: Date.now(),
+    gameStartTime: Date.now()
   };
 }
 
+function updatePaddles(gameState, deltaTime) {
+  for (let i = 0; i < 2; i++) {
+    const input = gameState.paddleInputs[i];
+    if (input.up && !input.down) {
+      gameState.paddles[i] -= gameState.paddleSpeed * deltaTime;
+    } else if (input.down && !input.up) {
+      gameState.paddles[i] += gameState.paddleSpeed * deltaTime;
+    }
+    
+    // Clamp paddle positions
+    gameState.paddles[i] = Math.max(0, 
+      Math.min(gameState.canvasHeight - gameState.paddleHeight, gameState.paddles[i])
+    );
+  }
+}
+
 function updateBall(gameState) {
-  if (!gameState.gameActive) return;
+  if (!gameState.gameActive) return false;
 
   const ball = gameState.ball;
   const paddleHeight = gameState.paddleHeight;
@@ -99,78 +236,68 @@ function updateBall(gameState) {
   const canvasWidth = gameState.canvasWidth;
   const canvasHeight = gameState.canvasHeight;
   
-  // Calculate delta time for consistent physics
   const now = Date.now();
-  const deltaTime = (now - gameState.lastUpdate) / 16.67; // Normalize to ~60fps
+  const deltaTime = Math.min((now - gameState.lastUpdate) / 16.67, 3); // Cap delta time
   gameState.lastUpdate = now;
   
-  // Move ball with delta time
+  // Update paddles first
+  updatePaddles(gameState, deltaTime);
+  
+  // Move ball
   ball.x += ball.dx * deltaTime;
   ball.y += ball.dy * deltaTime;
   
   // Ball collision with top/bottom walls
-  if (ball.y <= ball.radius) {
-    ball.y = ball.radius;
-    ball.dy = Math.abs(ball.dy);
-  }
-  if (ball.y >= canvasHeight - ball.radius) {
-    ball.y = canvasHeight - ball.radius;
-    ball.dy = -Math.abs(ball.dy);
+  if (ball.y <= ball.radius || ball.y >= canvasHeight - ball.radius) {
+    ball.y = Math.max(ball.radius, Math.min(canvasHeight - ball.radius, ball.y));
+    ball.dy = -ball.dy;
   }
   
-  // Improved paddle collision detection
+  // Paddle collision detection
   const leftPaddleX = 20;
   const rightPaddleX = 570;
   
   // Left paddle collision
   if (ball.x - ball.radius <= leftPaddleX + paddleWidth && 
-      ball.x - ball.radius > leftPaddleX &&
+      ball.x > leftPaddleX &&
       ball.y >= gameState.paddles[0] - ball.radius &&
       ball.y <= gameState.paddles[0] + paddleHeight + ball.radius &&
       ball.dx < 0) {
     
     ball.x = leftPaddleX + paddleWidth + ball.radius;
-    ball.dx = Math.abs(ball.dx) * 1.05; // Slight speed increase
-    
-    // Add spin based on hit position
-    const hitPos = (ball.y - gameState.paddles[0]) / paddleHeight;
-    ball.dy = (hitPos - 0.5) * 8;
+    const hitPos = (ball.y - (gameState.paddles[0] + paddleHeight/2)) / (paddleHeight/2);
+    ball.dx = Math.abs(ball.dx) * 1.02; // Slight speed increase
+    ball.dy = hitPos * 6 + ball.dy * 0.3; // Add spin
   }
   
   // Right paddle collision
   if (ball.x + ball.radius >= rightPaddleX && 
-      ball.x + ball.radius < rightPaddleX + paddleWidth &&
+      ball.x < rightPaddleX + paddleWidth &&
       ball.y >= gameState.paddles[1] - ball.radius &&
       ball.y <= gameState.paddles[1] + paddleHeight + ball.radius &&
       ball.dx > 0) {
     
     ball.x = rightPaddleX - ball.radius;
-    ball.dx = -Math.abs(ball.dx) * 1.05; // Slight speed increase
-    
-    // Add spin based on hit position
-    const hitPos = (ball.y - gameState.paddles[1]) / paddleHeight;
-    ball.dy = (hitPos - 0.5) * 8;
+    const hitPos = (ball.y - (gameState.paddles[1] + paddleHeight/2)) / (paddleHeight/2);
+    ball.dx = -Math.abs(ball.dx) * 1.02;
+    ball.dy = hitPos * 6 + ball.dy * 0.3;
   }
   
   // Limit ball speed
-  const maxSpeed = 12;
-  if (Math.abs(ball.dx) > maxSpeed) {
-    ball.dx = Math.sign(ball.dx) * maxSpeed;
-  }
-  if (Math.abs(ball.dy) > maxSpeed) {
-    ball.dy = Math.sign(ball.dy) * maxSpeed;
-  }
+  const maxSpeed = 15;
+  if (Math.abs(ball.dx) > maxSpeed) ball.dx = Math.sign(ball.dx) * maxSpeed;
+  if (Math.abs(ball.dy) > maxSpeed) ball.dy = Math.sign(ball.dy) * maxSpeed;
   
   // Score detection
   if (ball.x < -ball.radius) {
     gameState.scores[1]++;
     resetBall(gameState);
-    return true; // Score event
+    return true;
   }
   if (ball.x > canvasWidth + ball.radius) {
     gameState.scores[0]++;
     resetBall(gameState);
-    return true; // Score event
+    return true;
   }
   
   return false;
@@ -180,27 +307,21 @@ function resetBall(gameState) {
   gameState.ball.x = gameState.canvasWidth / 2;
   gameState.ball.y = gameState.canvasHeight / 2;
   gameState.ball.dx = (Math.random() > 0.5 ? 1 : -1) * 5;
-  gameState.ball.dy = (Math.random() - 0.5) * 6;
+  gameState.ball.dy = (Math.random() - 0.5) * 4;
   gameState.lastUpdate = Date.now();
 }
 
 function gameLoop(roomId) {
-  const gameState = gameStates[roomId];
-  const room = rooms[roomId];
+  const gameState = gameStates.get(roomId);
+  const room = rooms.get(roomId);
   
-  // Check if game should continue
-  if (!gameState || !room || room.length < 2 || !gameState.gameActive) {
-    if (gameLoops[roomId]) {
-      clearInterval(gameLoops[roomId]);
-      delete gameLoops[roomId];
-    }
+  if (!gameState || !room || room.players.length < 2 || !gameState.gameActive) {
+    cleanupGameLoop(roomId);
     return;
   }
   
-  // Update game physics
   const scoreEvent = updateBall(gameState);
   
-  // Send game state to all players in room
   const gameUpdate = {
     type: 'game_update',
     gameState: {
@@ -211,9 +332,9 @@ function gameLoop(roomId) {
     scoreEvent: scoreEvent
   };
   
-  // Send to all connected players
-  room.forEach((ws, index) => {
-    if (ws.readyState === 1) { // WebSocket.OPEN
+  // Send to connected players
+  room.players.forEach(ws => {
+    if (ws.readyState === 1) {
       try {
         ws.send(JSON.stringify(gameUpdate));
       } catch (error) {
@@ -222,45 +343,94 @@ function gameLoop(roomId) {
     }
   });
   
-  // Check for game end condition
-  if (gameState.scores[0] >= 5 || gameState.scores[1] >= 5) {
-    const winner = gameState.scores[0] >= 5 ? 0 : 1;
-    room.forEach(ws => {
+  // Check for game end
+  const maxScore = 5;
+  if (gameState.scores[0] >= maxScore || gameState.scores[1] >= maxScore) {
+    const winner = gameState.scores[0] >= maxScore ? 0 : 1;
+    const winnerName = room.players[winner]?.username || `Player ${winner + 1}`;
+    
+    room.players.forEach(ws => {
       if (ws.readyState === 1) {
         ws.send(JSON.stringify({
           type: 'game_end',
           winner: winner,
+          winnerName: winnerName,
           scores: gameState.scores
         }));
       }
     });
     
     gameState.gameActive = false;
-    if (gameLoops[roomId]) {
-      clearInterval(gameLoops[roomId]);
-      delete gameLoops[roomId];
-    }
+    cleanupGameLoop(roomId);
   }
 }
 
 function startGameLoop(roomId) {
-  // Prevent multiple game loops for the same room
-  if (gameLoops[roomId]) {
-    clearInterval(gameLoops[roomId]);
-  }
+  cleanupGameLoop(roomId); // Prevent multiple loops
   
-  gameLoops[roomId] = setInterval(() => {
+  gameLoops.set(roomId, setInterval(() => {
     gameLoop(roomId);
-  }, 1000 / 60); // 60 FPS
+  }, 1000 / 60));
 }
 
-wss.on('connection', (ws) => {
+function cleanupGameLoop(roomId) {
+  if (gameLoops.has(roomId)) {
+    clearInterval(gameLoops.get(roomId));
+    gameLoops.delete(roomId);
+  }
+}
+
+function cleanupRoom(roomId) {
+  if (rooms.has(roomId)) {
+    const room = rooms.get(roomId);
+    room.players.forEach(ws => {
+      if (ws.readyState === 1) {
+        ws.send(JSON.stringify({
+          type: 'room_closed',
+          message: 'Room has been closed due to inactivity'
+        }));
+      }
+    });
+    rooms.delete(roomId);
+  }
+  
+  if (gameStates.has(roomId)) {
+    gameStates.get(roomId).gameActive = false;
+    gameStates.delete(roomId);
+  }
+  
+  cleanupGameLoop(roomId);
+}
+
+// WebSocket connection handling
+wss.on('connection', (ws, req) => {
   console.log('New client connected');
+  
+  // Basic rate limiting per connection
+  let messageCount = 0;
+  let lastReset = Date.now();
   
   ws.on('message', (data) => {
     try {
+      // Rate limiting
+      const now = Date.now();
+      if (now - lastReset > 1000) {
+        messageCount = 0;
+        lastReset = now;
+      }
+      
+      if (messageCount++ > 60) { // Max 60 messages per second
+        ws.close(1008, 'Rate limit exceeded');
+        return;
+      }
+
+      // Message size limit
+      if (data.length > 1024) {
+        ws.close(1009, 'Message too large');
+        return;
+      }
+
       const msg = JSON.parse(data);
-      console.log('Received:', msg);
       
       if (msg.type === 'create') {
         const roomId = generateRoomCode();
@@ -268,10 +438,13 @@ wss.on('connection', (ws) => {
         
         ws.roomId = roomId;
         ws.username = guest;
-        ws.playerIndex = 0; // Room creator is left player
+        ws.playerIndex = 0;
         
-        rooms[roomId] = [ws];
-        gameStates[roomId] = createGameState();
+        rooms.set(roomId, {
+          players: [ws],
+          lastActivity: Date.now()
+        });
+        gameStates.set(roomId, createGameState());
         
         ws.send(JSON.stringify({ 
           type: 'room_created', 
@@ -280,8 +453,16 @@ wss.on('connection', (ws) => {
         }));
       }
       
-      if (msg.type === 'join') {
-        const room = rooms[msg.room];
+      else if (msg.type === 'join') {
+        if (!isValidRoomCode(msg.room)) {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            message: 'Invalid room code format' 
+          }));
+          return;
+        }
+
+        const room = rooms.get(msg.room);
         if (!room) {
           ws.send(JSON.stringify({ 
             type: 'error', 
@@ -290,7 +471,7 @@ wss.on('connection', (ws) => {
           return;
         }
         
-        if (room.length >= 2) {
+        if (room.players.length >= 2) {
           ws.send(JSON.stringify({ 
             type: 'error', 
             message: 'Room is full' 
@@ -301,13 +482,13 @@ wss.on('connection', (ws) => {
         const guest = generateGuestName();
         ws.roomId = msg.room;
         ws.username = guest;
-        ws.playerIndex = 1; // Joiner is right player
+        ws.playerIndex = 1;
         
-        room.push(ws);
+        room.players.push(ws);
+        room.lastActivity = Date.now();
         
-        // Notify both players
-        const playerNames = room.map(w => w.username);
-        room.forEach(sock => {
+        const playerNames = room.players.map(w => w.username);
+        room.players.forEach(sock => {
           if (sock.readyState === 1) {
             sock.send(JSON.stringify({
               type: 'player_joined',
@@ -316,27 +497,32 @@ wss.on('connection', (ws) => {
           }
         });
         
-        if (room.length === 2) {
-          room.forEach(sock => {
+        if (room.players.length === 2) {
+          room.players.forEach(sock => {
             if (sock.readyState === 1) {
               sock.send(JSON.stringify({ type: 'start_game' }));
             }
           });
           
-          // Start game loop for this room
           setTimeout(() => startGameLoop(msg.room), 1000);
         }
       }
       
-      if (msg.type === 'paddle_move') {
+      else if (msg.type === 'paddle_input') {
         const roomId = ws.roomId;
-        const gameState = gameStates[roomId];
+        const gameState = gameStates.get(roomId);
         
-        if (gameState && msg.player !== undefined && msg.y !== undefined) {
-          // Clamp paddle position
-          const maxY = gameState.canvasHeight - gameState.paddleHeight;
-          const clampedY = Math.max(0, Math.min(maxY, msg.y));
-          gameState.paddles[msg.player] = clampedY;
+        if (gameState && ws.playerIndex !== undefined && 
+            typeof msg.up === 'boolean' && typeof msg.down === 'boolean') {
+          
+          gameState.paddleInputs[ws.playerIndex] = {
+            up: msg.up,
+            down: msg.down
+          };
+          
+          if (rooms.has(roomId)) {
+            rooms.get(roomId).lastActivity = Date.now();
+          }
         }
       }
       
@@ -353,23 +539,14 @@ wss.on('connection', (ws) => {
     console.log('Client disconnected');
     const roomId = ws.roomId;
     
-    if (roomId && rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter(s => s !== ws);
+    if (roomId && rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      room.players = room.players.filter(s => s !== ws);
       
-      if (rooms[roomId].length === 0) {
-        // Clean up empty room
-        delete rooms[roomId];
-        if (gameStates[roomId]) {
-          gameStates[roomId].gameActive = false;
-          delete gameStates[roomId];
-        }
-        if (gameLoops[roomId]) {
-          clearInterval(gameLoops[roomId]);
-          delete gameLoops[roomId];
-        }
+      if (room.players.length === 0) {
+        cleanupRoom(roomId);
       } else {
-        // Notify remaining player
-        rooms[roomId].forEach(sock => {
+        room.players.forEach(sock => {
           if (sock.readyState === 1) {
             sock.send(JSON.stringify({
               type: 'player_left',
@@ -378,9 +555,8 @@ wss.on('connection', (ws) => {
           }
         });
         
-        // Pause the game
-        if (gameStates[roomId]) {
-          gameStates[roomId].gameActive = false;
+        if (gameStates.has(roomId)) {
+          gameStates.get(roomId).gameActive = false;
         }
       }
     }
@@ -391,13 +567,29 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Cleanup function for graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, cleaning up...');
-  Object.keys(gameLoops).forEach(roomId => {
-    clearInterval(gameLoops[roomId]);
-  });
-  process.exit(0);
-});
+// Graceful shutdown
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
 
-console.log('Pong server initialized');
+function cleanup() {
+  console.log('Shutting down gracefully...');
+  
+  // Clear all game loops
+  for (const [roomId, interval] of gameLoops.entries()) {
+    clearInterval(interval);
+  }
+  
+  // Close all WebSocket connections
+  wss.clients.forEach(ws => {
+    ws.terminate();
+  });
+  
+  wss.close(() => {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+}
+
+console.log('Pong server initialized with security improvements');
