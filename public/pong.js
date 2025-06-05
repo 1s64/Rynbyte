@@ -30,11 +30,12 @@ joinBtn.onclick = () => {
   socket.send(JSON.stringify({ type: 'join', room: code }));
 };
 
-function connectSocket() {
+function connectSocket(onOpenCallback) {
   socket = new WebSocket(`wss://${location.host}`);
 
   socket.onopen = () => {
     console.log('WebSocket connected');
+    if (onOpenCallback) onOpenCallback();
   };
 
   socket.onmessage = (event) => {
