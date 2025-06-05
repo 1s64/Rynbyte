@@ -18,18 +18,6 @@ playBtn.onclick = () => {
   roomChoice.classList.remove('hidden');
 };
 
-createBtn.onclick = () => {
-  connectSocket();
-  socket.send(JSON.stringify({ type: 'create' }));
-};
-
-joinBtn.onclick = () => {
-  const code = roomInput.value.trim();
-  if (!code) return alert('Enter a room code');
-  connectSocket();
-  socket.send(JSON.stringify({ type: 'join', room: code }));
-};
-
 function connectSocket(onOpenCallback) {
   socket = new WebSocket(`wss://${location.host}`);
 
@@ -61,7 +49,29 @@ function connectSocket(onOpenCallback) {
       alert(msg.message);
     }
   };
+
+  socket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+
+  socket.onclose = () => {
+    console.log('WebSocket closed');
+  };
 }
+
+createBtn.onclick = () => {
+  connectSocket(() => {
+    socket.send(JSON.stringify({ type: 'create' }));
+  });
+};
+
+joinBtn.onclick = () => {
+  const code = roomInput.value.trim();
+  if (!code) return alert('Enter a room code');
+  connectSocket(() => {
+    socket.send(JSON.stringify({ type: 'join', room: code }));
+  });
+};
 
 function startGame() {
   roomChoice.classList.add('hidden');
