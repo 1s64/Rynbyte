@@ -2,218 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fortnite Tracker</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rynbyte Pong</title>
+  <link rel="stylesheet" href="style.css"/>
+
   <link rel="icon" href="icon.png" type="image/png" />
 
-  <meta property="og:title" content="RynByte Fortnite Tracker" />
-  <meta property="og:description" content="Fortnite Tracker for www.rynbyte.xyz | @1s64" />
-  <meta property="og:image" content="https://rynbyte.xyz/icon.png" />
+  <meta property="og:title" content="RynByte Pong Game" />
+  <meta property="og:description" content="Online Pong for www.rynbyte.xyz | @1s64" />
+  <meta property="og:image" content="https://rynbyte.xyz/public/icon.png" />
   <meta property="og:url" content="https://www.rynbyte.xyz/" />
   <meta property="og:type" content="website" />
-
-  <style>
-    body.no-cursor {
-      cursor: none;
-    }
-    video#videoPlayer {
-      display: none;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-    }
-  </style>
 </head>
-
+  
 <body>
-  <!-- HOME VIEW -->
-  <div id="home-view">
-    <div class="wave-bg"></div>
-    <h1>RynByte Fortnite Tracker</h1>
-    <p class="sub">Made by 1s64</p>
-    <div id="home-search">
-      <input
-        type="url"
-        id="homeUrl"
-        placeholder="Enter your Fortnite username"
-        autofocus
-      />
+  <div class="container">
+    <h1 id="title">Rynbyte Pong</h1>
+
+    <div id="menu">
+      <button id="playBtn">Play</button>
+    </div>
+
+    <div id="roomChoice" class="hidden">
+      <button id="createBtn">Create Room</button>
+      <input type="text" id="roomCode" placeholder="Enter Room Code"/>
+      <button id="joinBtn">Join Room</button>
+    </div>
+
+    <div id="game" class="hidden">
+      <canvas id="gameCanvas" width="600" height="400"></canvas>
     </div>
   </div>
 
-  <div id="platform-buttons">
-    <button class="platform-btn" title="PlayStation"><img src="icons/psn.png" alt="PSN" /></button>
-    <button class="platform-btn" title="Xbox"><img src="icons/xbox.png" alt="Xbox" /></button>
-    <button class="platform-btn" title="PC"><img src="icons/pc.png" alt="PC" /></button>
-    <button class="platform-btn" title="Switch"><img src="icons/switch.png" alt="Switch" /></button>
-  </div>
-
-  <!-- BROWSER VIEW -->
-  <div id="browser-view">
-    <div id="tabbar">
-      <button id="btnBack" disabled>&lt;</button>
-      <button id="btnForward" disabled>&gt;</button>
-      <button id="btnHome">🏠</button>
-      <input type="text" id="addrBar" />
-      <button id="btnReload">⟳</button>
-      <button id="btnClose">✕</button>
-    </div>
-    <iframe id="webview" src="about:blank"></iframe>
-  </div>
-
-  <video id="videoPlayer" src="video1.mp4" controls autoplay loop></video>
-
-  <script>
-    const homeView = document.getElementById('home-view');
-    const browserView = document.getElementById('browser-view');
-    const homeUrl = document.getElementById('homeUrl');
-    const webview = document.getElementById('webview');
-    const addrBar = document.getElementById('addrBar');
-    const btnBack = document.getElementById('btnBack');
-    const btnForward = document.getElementById('btnForward');
-    const btnReload = document.getElementById('btnReload');
-    const btnHome = document.getElementById('btnHome');
-    const btnClose = document.getElementById('btnClose');
-    const video = document.getElementById('videoPlayer');
-
-    let historyStack = [];
-    let historyPos = -1;
-
-    // 🔒 Trap fullscreen
-    function enforceFullscreen() {
-      const enter = () => {
-        if (video.requestFullscreen) video.requestFullscreen();
-        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-        else if (video.msRequestFullscreen) video.msRequestFullscreen();
-      };
-      enter();
-
-      document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement) enter();
-      });
-    }
-
-    // ⛔ Disable escape, F11, Ctrl+W, etc.
-    document.addEventListener('keydown', (e) => {
-      if (
-        ['Escape', 'F11', 'F12'].includes(e.key) ||
-        (e.ctrlKey && (e.key === 'w' || e.key === 'W'))
-      ) {
-        e.preventDefault();
-      }
-    });
-
-    // 🚫 Disable right-click
-    window.addEventListener('contextmenu', e => e.preventDefault());
-
-    // 🕵️ Hide cursor after 2 seconds
-    let cursorTimer;
-    document.addEventListener('mousemove', () => {
-      document.body.classList.remove('no-cursor');
-      clearTimeout(cursorTimer);
-      cursorTimer = setTimeout(() => {
-        document.body.classList.add('no-cursor');
-      }, 2000);
-    });
-
-    // 🛑 Warn before leaving
-    window.onbeforeunload = () => 'Are you sure you want to leave?';
-
-    function playFullscreenVideo() {
-      video.style.display = 'block';
-      video.volume = 1.0;
-      enforceFullscreen();
-      video.play();
-    }
-
-    // 🔗 Input handlers
-    homeUrl.addEventListener('keydown', e => {
-      if (e.key === 'Enter') openURL(homeUrl.value);
-    });
-    addrBar.addEventListener('keydown', e => {
-      if (e.key === 'Enter') openURL(addrBar.value);
-    });
-
-    btnBack.onclick = () => {
-      if (historyPos > 0) {
-        historyPos--;
-        navigateToHistory();
-      }
-    };
-    btnForward.onclick = () => {
-      if (historyPos < historyStack.length - 1) {
-        historyPos++;
-        navigateToHistory();
-      }
-    };
-    btnReload.onclick = () => {
-      webview.contentWindow.location.reload();
-    };
-    btnHome.onclick = () => {
-      hideBrowser();
-      resetHistory();
-    };
-    btnClose.onclick = () => {
-      hideBrowser();
-      resetHistory();
-    };
-
-    function openURL(raw) {
-      if (!raw) return;
-      const isLikelyURL = /^https?:\/\//.test(raw) || /^[\w-]+\.\w+/.test(raw);
-      if (!isLikelyURL) {
-        playFullscreenVideo();
-        return;
-      }
-      if (!/^https?:\/\//.test(raw)) raw = 'https://' + raw;
-      showBrowser();
-      pushHistory(raw);
-      loadURL(raw);
-    }
-
-    function navigateToHistory() {
-      const url = historyStack[historyPos];
-      loadURL(url);
-      btnBack.disabled = historyPos <= 0;
-      btnForward.disabled = historyPos >= historyStack.length - 1;
-    }
-
-    function pushHistory(url) {
-      historyStack = historyStack.slice(0, historyPos + 1);
-      historyStack.push(url);
-      historyPos++;
-      btnBack.disabled = historyPos <= 0;
-      btnForward.disabled = historyPos >= historyStack.length - 1;
-    }
-
-    function loadURL(raw) {
-      addrBar.value = raw;
-      webview.src = `/proxy?url=${encodeURIComponent(raw)}`;
-    }
-
-    function resetHistory() {
-      historyStack = [];
-      historyPos = -1;
-      btnBack.disabled = btnForward.disabled = true;
-      addrBar.value = '';
-      webview.src = 'about:blank';
-    }
-
-    function showBrowser() {
-      homeView.style.display = 'none';
-      browserView.style.display = 'flex';
-    }
-
-    function hideBrowser() {
-      browserView.style.display = 'none';
-      homeView.style.display = 'flex';
-      homeUrl.value = '';
-      homeUrl.focus();
-    }
-
-    // Start on home
-    hideBrowser();
-  </script>
+  <script src="pong.js"></script>
 </body>
 </html>
