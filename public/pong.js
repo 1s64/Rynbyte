@@ -243,12 +243,15 @@ function declineTerms() {
 
 // Enhanced WebSocket Connection Management
 function connectSocket(onOpenCallback) {
-  if (socket) {
+  if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) {
     socket.close();
   }
   
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  socket = new WebSocket(`${protocol}//${location.host}`);
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+  console.log(`Connecting to WebSocket at ${wsUrl}`);
+  
+  socket = new WebSocket(wsUrl);
   
   socket.onopen = () => {
     console.log('WebSocket connected');
@@ -256,11 +259,16 @@ function connectSocket(onOpenCallback) {
     if (onOpenCallback) onOpenCallback();
   };
   
-  socket.onmessage = handleMessage;
-  socket.onclose = handleDisconnect;
+  socket.onclose = (event) => {
+    console.log(`WebSocket closed: ${event.code} - ${event.reason}`);
+    handleDisconnect(event);
+  };
+  
   socket.onerror = (error) => {
     console.error('WebSocket error:', error);
   };
+  
+  socket.onmessage = handleMessage;
 }
 
 function handleMessage(event) {
