@@ -14,6 +14,27 @@
 </head>
   
 <body>
+    <form id="terms-form">
+      <label>
+        <input type="checkbox" id="accept-checkbox" required /> I accept the terms
+      </label>
+      <button type="submit">Submit</button>
+    </form>
 
+    <script>
+    document.getElementById('terms-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const acceptedTerms = document.getElementById('accept-checkbox').checked;
+
+      const res = await fetch('/api/accept-terms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acceptedTerms })
+      });
+
+      const data = await res.json();
+      alert(data.message);
+    });
+    </script>
 </body>
 </html>
