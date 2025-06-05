@@ -1,0 +1,76 @@
+/* Center container vertically and horizontally */
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f7f9fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terms-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  max-width: 600px;
+  padding: 30px 40px;
+  box-sizing: border-box;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+h1 {
+  margin-top: 0;
+  text-align: center;
+  color: #222;
+}
+
+p, ul {
+  color: #444;
+  line-height: 1.6;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+h3 {
+  margin-top: 20px;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 6px;
+}
+
+.action-buttons {
+  margin-top: 25px;
+  text-align: center;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  padding: 12px 22px;
+  margin: 0 10px;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.accept-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.accept-btn:hover {
+  background-color: #218838;
+}
+
+.decline-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.decline-btn:hover {
+  background-color: #c82333;
+}
