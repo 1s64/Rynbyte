@@ -110,7 +110,7 @@ app.post('/api/accept-terms', async (req, res) => {
     const message = `🎮 *RynByte Pong - New User*\n\n` +
                    `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
                    `🔒 *Session ID:* \`${hashedIP}\`\n` +
-                   `🌐 *IP Address:* \`${userIP}\`\n` +
+                   `🌐 *IP Address:* \`${clientIP}\`\n` +
                    `🖥️ *Browser:* ${userAgent.split(' ')[0] || 'Unknown'}\n` +
                    `✅ *Terms Accepted:* Yes`;
 
