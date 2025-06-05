@@ -155,26 +155,27 @@ createBtn.onclick = () => {
 
 joinBtn.onclick = () => {
   const roomCode = roomInput.value.trim().toUpperCase();
+  
   if (!roomCode) {
     alert('Please enter a room code');
+    roomInput.focus();
     return;
   }
   
   if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
-    alert('Room code must be 6 characters (letters and numbers only)');
+    alert('Room code must be exactly 6 characters (letters and numbers only)');
+    roomInput.focus();
+    roomInput.select();
     return;
   }
   
   connectSocket(() => {
-    socket.send(JSON.stringify({ type: 'join', room: roomCode }));
+    socket.send(JSON.stringify({ 
+      type: 'join', 
+      room: roomCode 
+    }));
   });
 };
-
-roomInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    joinBtn.click();
-  }
-});
 
 // Terms of Service Modal Functions
 function showTermsModal() {
