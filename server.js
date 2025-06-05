@@ -24,14 +24,12 @@ const wss = new WebSocketServer({
   maxPayload: 1024 // Limit payload size to prevent DoS
 });
 
-app.use('/public', express.static(path.join(__dirname, 'public'), (err, req, res, next) => {
-  if (err) {
-    console.error('Static file error:', err);
-    next(err);
-  } else {
-    next();
+app.use('/public', express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    res.set('Cache-Control', 'public, max-age=3600');
   }
-});
+}));
+
 app.use(express.json({ limit: '1mb' })); // Limit JSON payload size
 
 // Rate limiting for terms acceptance
