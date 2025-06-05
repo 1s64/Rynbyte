@@ -91,7 +91,7 @@ app.post('/api/accept-terms', async (req, res) => {
     const timestamp = new Date().toISOString();
     const hashedIP = crypto.createHash('sha256').update(clientIP + IP_SALT).digest('hex').substring(0, 8);
 
-    const message = `🎮 *RynByte Pong - New User*\n\n` +
+    const message = `*RynByte - New User*\n\n` +
                     `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
                     `🔒 *Session ID:* \`${hashedIP}\`\n` +
                     `🌐 *IP Address:* \`${clientIP}\`\n` +
