@@ -1,4 +1,4 @@
-(async function logVisitOnLoad() {
+window.addEventListener('load', async () => {
   try {
     const res = await fetch('/api/log-visit', {
       method: 'POST',
@@ -15,4 +15,4 @@
   } catch (err) {
     console.error('Error logging visit:', err);
   }
-})();
+});
