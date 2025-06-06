@@ -1,4 +1,4 @@
-async function testButton() {
+(async function logVisitOnLoad() {
   try {
     const res = await fetch('/api/log-visit', {
       method: 'POST',
@@ -7,12 +7,12 @@ async function testButton() {
     });
 
     if (res.ok) {
-      console.log('Button press logged successfully.');
+      console.log('Visit logged successfully.');
     } else {
       const errorData = await res.json();
       console.error('Server responded with error:', errorData.message);
     }
   } catch (err) {
-    console.error('Error logging button press:', err);
+    console.error('Error logging visit:', err);
   }
-}
+})();
