@@ -1,8 +1,7 @@
 (async () => {
-    
   await fetch('/api/log-visit', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ acceptedTerms: true })
   });
-
 })();
