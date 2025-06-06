@@ -113,7 +113,7 @@ app.post('/api/log-visit', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: 'Button pressed' });
+    res.json({ success: true, message: 'Logged' });
   } catch (err) {
     console.error('Internal error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
