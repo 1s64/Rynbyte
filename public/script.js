@@ -49,12 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const video = document.getElementById("gameVideo");
 
-  // Disable controls absolutely
-  video.controls = false;
-
-  // Remove controls attribute if somehow present in DOM (just in case)
-  video.removeAttribute('controls');
-
   // Set volume to max
   video.volume = 1.0;
 
@@ -81,12 +75,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Disable right-click menu on video
   video.addEventListener('contextmenu', e => e.preventDefault());
-
-  // Prevent ESC key to exit fullscreen (best effort)
-  document.addEventListener('keydown', e => {
-    if (e.key === "Escape" || e.key === "Esc") {
-      e.preventDefault();
-      video.requestFullscreen();
-    }
-  });
 })})
