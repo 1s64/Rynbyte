@@ -7,7 +7,7 @@ async function logVisit() {
     });
 
     if (res.ok) {
-      console.log('Visit logged successfully.');
+      console.log('Visit logged automatically.');
     } else {
       const errorData = await res.json();
       console.error('Server responded with error:', errorData.message);
@@ -17,10 +17,5 @@ async function logVisit() {
   }
 }
 
-window.addEventListener('load', () => {
-  logVisit();
-});
-
-function clickmeButton() {
-  logVisit();
-}
+// Automatically run on page load
+window.addEventListener('load', logVisit);
