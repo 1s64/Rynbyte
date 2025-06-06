@@ -1,17 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('logVisitBtn');
-  btn.addEventListener('click', async () => {
+async function declineTerms() {
+    console.log("Terms declined.")
+}
+
+async function acceptTerms() {
     try {
-      const response = await fetch('/api/log-visit', {
+    const res = await fetch('/api/log-visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acceptedTerms: true }),
-      });
-      const data = await response.json();
-      console.log(data);
-      alert(data.message);
+        body: JSON.stringify({ acceptedTerms: true })
+    });
+    console.log('Terms accepted.');
     } catch (err) {
-      console.error('Request failed', err);
+    console.error('Error accepting terms:', err);
     }
-  });
-});
+}
