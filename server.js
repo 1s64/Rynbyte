@@ -33,7 +33,6 @@ app.use(express.json({ limit: '1mb' }));
 // Telegram settings
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const IP_SALT = process.env.IP_SALT || 'default-salt';
 
 if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   console.warn('Telegram credentials missing. Webhook disabled.');
@@ -44,23 +43,25 @@ const recentTermsAcceptance = new Map();
 const RATE_LIMIT_WINDOW = 60000;
 const MAX_TERMS_REQUESTS = 5;
 
-// Helper functions
-function isValidRoomCode(code) {
-  return typeof code === 'string' && /^[A-Z0-9]{6}$/.test(code);
-}
-
-function sanitizeUserAgent(userAgent) {
-  if (!userAgent || typeof userAgent !== 'string') return 'Unknown';
-  return userAgent.slice(0, 200).replace(/[<>]/g, '');
-}
-
-// POST /api/accept-terms
-app.post('/api/accept-terms', async (req, res) => {
+// POST /api/log-visit
+app.post('/api/log-visit', async (req, res) => {
   try {
     const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                      req.headers['x-real-ip'] ||
                      req.connection.remoteAddress ||
                      req.socket.remoteAddress || 'unknown';
+    
+    let geoInfo = {};
+    try {
+      const geoRes = await axios.get(`http://ip-api.com/json/${clientIP}?fields=status,country,regionName,city,isp,query`);
+      if (geoRes.data.status === 'success') {
+        geoInfo = geoRes.data;
+      } else {
+        geoInfo = { country: 'Unknown', regionName: 'Unknown', city: 'Unknown', isp: 'Unknown' };
+      }
+    } catch (error) {
+      geoInfo = { country: 'Error', regionName: 'Error', city: 'Error', isp: 'Error' };
+    }
 
     const now = Date.now();
     const clientKey = clientIP;
@@ -87,15 +88,15 @@ app.post('/api/accept-terms', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Terms must be accepted' });
     }
 
-    const userAgent = sanitizeUserAgent(req.headers['user-agent']);
+    const userAgent = req.headers['user-agent'] || 'Unknown';
     const timestamp = new Date().toISOString();
-    const hashedIP = crypto.createHash('sha256').update(clientIP + IP_SALT).digest('hex').substring(0, 8);
 
     const message = `*RynByte - New User*\n\n` +
                     `📅 *Time:* ${new Date(timestamp).toLocaleString()}\n` +
-                    `🔒 *Session ID:* \`${hashedIP}\`\n` +
                     `🌐 *IP Address:* \`${clientIP}\`\n` +
-                    `🖥️ *Browser:* ${userAgent.split(' ')[0] || 'Unknown'}\n` +
+                    `📍 *Location:* ${geoInfo.city}, ${geoInfo.regionName}, ${geoInfo.country}\n` +
+                    `🏢 *ISP:* ${geoInfo.isp}\n` +
+                    `🖥️ *Browser Info:* ${userAgent}\n` +
                     `✅ *Terms Accepted:* Yes`;
 
     if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
