@@ -1,0 +1,60 @@
+/* public/style.css */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #121212;
+  color: #ffffff;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.main-container {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 12px;
+  background-color: #1e1e1e;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
+h1#title {
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+}
+
+button {
+  background-color: #3f51b5;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #303f9f;
+}
+
+input[type="text"] {
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #555;
+  border-radius: 6px;
+  margin-right: 1rem;
+  background-color: #2a2a2a;
+  color: white;
+  outline: none;
+}
+
+.hidden {
+  display: none;
+}
+
+#roomChoice {
+  margin-top: 1.5rem;
+}
