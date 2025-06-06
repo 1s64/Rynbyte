@@ -49,9 +49,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const video = document.getElementById("gameVideo");
 
-  // Set volume to max
-  video.volume = 1.0;
-
   // Play video
   video.play().catch(err => {
     console.error("Autoplay failed:", err);
