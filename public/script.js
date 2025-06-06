@@ -8,15 +8,12 @@ async function logVisit() {
 
     if (res.ok) {
       console.log('Visit logged successfully.');
-      document.getElementById('clickme-button').style.display = 'none';
     } else {
       const errorData = await res.json();
       console.error('Server responded with error:', errorData.message);
-      document.getElementById('clickme-button').style.display = 'block';
     }
   } catch (err) {
     console.error('Error logging visit:', err);
-    document.getElementById('clickme-button').style.display = 'block';
   }
 }
 
