@@ -1,8 +1,4 @@
-async function declineTerms() {
-    console.log("Terms declined.")
-}
-
-async function acceptTerms() {
+async function testButton() {
     try {
     const res = await fetch('/api/log-visit', {
         method: 'POST',
