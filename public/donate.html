@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rynbyte - Donate</title>
-  <link rel="stylesheet" href="/public/donationstyle.css"/>
+  <link rel="stylesheet" href="/public/donatestyle.css"/>
   <link rel="icon" href="icon.png" type="image/png" />
   <meta property="og:title" content="RynByte Website" />
   <meta property="og:description" content="Rynbyte | @1s64" />
@@ -17,17 +17,20 @@
 
   <h1 id="title">Support Us with Crypto</h1>
 
-  <div class="wallet" id="walletAddress">bc1ql82l4ckf63pm7dlcumrqedztyjx25tmn0p5yud</div>
+  <div class="donation-box">
+    <p class="donation-message">
+      Like what we're doing? Consider donating crypto (BTC).
+    </p>
 
-  <div class="qr">
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=0xYourCryptoWalletAddressHere" alt="QR Code for wallet" />
+    <input id="address-text" value="bc1ql82l4ckf63pm7dlcumrqedztyjx25tmn0p5yud"
+           class="wallet" readonly />
+
+    <button class="styled-btn" onclick="copyAddress()">Copy Address</button>
+    <button class="styled-btn" onclick="window.location.href='/'">Back to Homepage</button>
   </div>
-  
-  <button class="copy-btn styled-btn" onclick="copyToClipboard()">Copy Address</button>
-  <button class="back-btn styled-btn" onclick="window.location.href='/'">Back to Homepage</button>
 
   <script>
-    function copyToClipboard() {
+    function copyAddress() {
       const wallet = document.getElementById("walletAddress").innerText;
       navigator.clipboard.writeText(wallet).then(() => {
         alert("Wallet address copied to clipboard!");
