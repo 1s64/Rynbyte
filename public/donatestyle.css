@@ -69,6 +69,46 @@ h1#title {
   box-shadow: 0 6px 20px rgba(168, 85, 247, 0.45);
 }
 
-.qr {
-    margin: 1rem;
+
+/* Donation Box (exact replica of index.css) */
+.donation-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  padding: 36px;
+  margin-top: 20px;
+  text-align: center;
+  font-weight: 600;
+  max-width: 600px;
+  width: 100%;
+}
+
+.donation-box h2 {
+  font-size: 1.7rem;
+  margin-bottom: 18px;
+}
+
+.donation-message {
+  margin-bottom: 20px;
+  font-size: 1.05rem;
+}
+
+/* Styled input from index */
+.donation-box input {
+  background-color: #222222;
+  border: 1px solid #666;
+  border-radius: 12px;
+  padding: 14px;
+  width: 100%;
+  color: #eee;
+  font-family: monospace;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.donation-box input:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 8px #a855f7aa;
 }
