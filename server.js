@@ -28,6 +28,16 @@ app.use('/public', express.static(path.join(__dirname, 'public'), {
   }
 }));
 
+// Route for homepage (optional, if not using index.html in public)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Route for /donate
+app.get("/donate", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "donate.html"));
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 // Telegram settings
