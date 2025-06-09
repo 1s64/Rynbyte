@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rynbyte</title>
-  <link rel="stylesheet" href="/public/style.css"/>
+  <link rel="stylesheet" href="/public/indexstyle.css"/>
   <link rel="icon" href="icon.png" type="image/png" />
   <meta property="og:title" content="RynByte Website" />
-  <meta property="og:description" content="Test website www.rynbyte.xyz | @1s64" />
+  <meta property="og:description" content="Rynbyte | @1s64" />
   <meta property="og:image" content="https://www.rynbyte.xyz/public/icon.png" />
   <meta property="og:url" content="https://www.rynbyte.xyz/" />
   <meta property="og:type" content="website" />
@@ -16,17 +16,126 @@
 <body>
   <div class="main-container">
 
-  <div class="container">
-    <h1 id="title">Rynbyte Pong</h1>
-    <div id="menu">
-      <button id="playBtn">Play</button>
-    </div>
-    <div id="roomChoice" class="hidden">
-      <input type="text" id="roomCode" placeholder="Enter Room Code"/>
-      <button id="joinBtn">Join Room</button>
-    </div>
+    <div class="container">
+      <h1 id="title">Rynbyte Game</h1>
+      <div id="menu">
+        <button id="playBtn">Play</button>
+      </div>
 
-  </div>
+      <div class="buttons">
+        <button type="button" onclick="toggleSection('privacyBox')">Privacy Policy</button>
+        <button type="button" onclick="toggleSection('termsBox')">Terms and Conditions</button>
+        <button type="button" onclick="window.location.href='/donate'">Donate</button>
+      </div>
+
+      <footer class="site-footer">
+        made by 1s64
+      </footer>
+
+      <!-- Terms and Conditions -->
+      <div id="termsBox" class="legal-box hidden">
+        <h2>Terms and Conditions</h2>
+        <p>
+          This website is intended solely for entertainment purposes. While we strive to offer engaging content, some material may not be suitable for all users. By using this site, you agree to the following:
+        </p>
+        <ul>
+          <li>
+            You confirm that you are at least 18 years old, or of legal age as defined by your jurisdiction, and that you are voluntarily choosing to access this content for personal use.
+          </li>
+          <li>
+            Use of this website is at your own risk. We are not responsible for any emotional distress, fear, injury, or property damage resulting from interactions with our content.
+          </li>
+          <li>
+            If you have a medical condition sensitive to visual or auditory surprises—such as epilepsy or other neurological disorders—you should not use this website.
+          </li>
+          <li>
+            This website is not affiliated with, endorsed by, or associated with "OnlyFans.com". Any similarities in naming are purely satirical or humorous in nature.
+          </li>
+        </ul>
+      </div>
+
+      <!-- Privacy -->
+      <div id="privacyBox" class="legal-box hidden">
+        <h2>Privacy Policy</h2>
+        <p>
+          Your privacy is important to us. This policy outlines how we collect, use, and protect your personal data when you use our services.
+        </p>
+
+        <h3>1. Information Collection</h3>
+        <ul>
+          <li>We collect information you provide directly to us (e.g., when using our site).</li>
+          <li>We may collect technical data such as:
+            <ul>
+              <li>IP address</li>
+              <li>Browser and device type</li>
+              <li>Usage and interaction logs</li>
+            </ul>
+          </li>
+        </ul>
+
+        <h3>2. Use of Information</h3>
+        <p>We use the collected information to:</p>
+        <ul>
+          <li>Provide and improve our services</li>
+          <li>Ensure site security and prevent misuse (e.g., DDoS prevention)</li>
+          <li>Offer custom user experiences</li>
+        </ul>
+
+        <h3>3. Cookies</h3>
+        <p>
+          Cookies help us enhance your experience. They are used to:
+        </p>
+        <ul>
+          <li>Store user preferences</li>
+          <li>Identify referrers or link creators</li>
+          <li>Improve analytics and performance</li>
+        </ul>
+
+        <h3>4. Data Protection</h3>
+        <p>
+          We use encryption, firewalls, and other safeguards to protect your data. However, no method is 100% secure online.
+        </p>
+
+        <h3>5. Your Rights (GDPR)</h3>
+        <ul>
+          <li>Access your personal data</li>
+          <li>Request corrections or deletion</li>
+          <li>Withdraw consent at any time</li>
+          <li>Object to data processing in certain cases</li>
+        </ul>
+
+        <!-- 💸 Donation Box (moved inside Privacy Policy) -->
+        <div class="donation-box bg-white shadow-md rounded-lg p-6 mt-6">
+          <h2 class="text-xl font-bold text-center text-purple-700">Support RynByte</h2>
+          <p class="text-center text-gray-600 mb-4">
+            Like what we're doing? Consider donating crypto (BTC).
+          </p>
+
+          <div class="text-center">
+            <input id="address-text" value="bc1ql82l4ckf63pm7dlcumrqedztyjx25tmn0p5yud"
+                  class="text-center w-full p-2 mb-2 border rounded bg-gray-100" readonly />
+            <button onclick="copyAddress()"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
+              Copy Address
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        function copyToClipboard() {
+          const wallet = document.getElementById("walletAddress").innerText;
+          navigator.clipboard.writeText(wallet).then(() => {
+            alert("Wallet address copied to clipboard!");
+          }).catch(err => {
+            alert("Failed to copy address.");
+          });
+        }
+      </script>
+
+    </div> <!-- End container -->
+
+  </div> <!-- End main-container -->
 
   <script src="/public/script.js"></script>
 </body>
