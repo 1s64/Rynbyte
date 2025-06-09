@@ -1,0 +1,74 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+    background: #111;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: url('assets/background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    height: 100vh;
+    padding: 20px;
+    text-align: center;
+}
+
+h1#title {
+  font-size: 3rem;
+  margin: 0 auto 40px;
+  display: block;
+  width: fit-content;
+  position: relative;
+  padding: 10px 30px;
+  border-radius: 30px; /* round corners */
+  background: linear-gradient(90deg, #ffffff, #dcdcdc);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+
+.wallet {
+    background: #222;
+    padding: 1rem;
+    border-radius: 10px;
+    word-break: break-all;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #333;
+    width: 100%;
+    max-width: 500px;
+}
+
+/* Reuse legal button styles */
+.styled-btn {
+  background: linear-gradient(145deg, #3a3a3a, #2e2e2e);
+  color: #e0e0e0;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease-in-out;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 10px;
+}
+
+.styled-btn:hover {
+  background: linear-gradient(145deg, #a855f7, #06b6d4);
+  color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.45);
+}
+
+.qr {
+    margin: 1rem;
+}

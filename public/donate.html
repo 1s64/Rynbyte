@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rynbyte - Donate</title>
+  <link rel="stylesheet" href="/public/donationstyle.css"/>
+  <link rel="icon" href="icon.png" type="image/png" />
+  <meta property="og:title" content="RynByte Website" />
+  <meta property="og:description" content="Rynbyte | @1s64" />
+  <meta property="og:image" content="https://www.rynbyte.xyz/public/icon.png" />
+  <meta property="og:url" content="https://www.rynbyte.xyz/" />
+  <meta property="og:type" content="website" />
+</head>
+
+<body>
+
+  <h1 id="title">Support Us with Crypto</h1>
+
+  <div class="wallet" id="walletAddress">bc1ql82l4ckf63pm7dlcumrqedztyjx25tmn0p5yud</div>
+
+  <div class="qr">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=0xYourCryptoWalletAddressHere" alt="QR Code for wallet" />
+  </div>
+  
+  <button class="copy-btn styled-btn" onclick="copyToClipboard()">Copy Address</button>
+  <button class="back-btn styled-btn" onclick="window.location.href='/'">Back to Homepage</button>
+
+  <script>
+    function copyToClipboard() {
+      const wallet = document.getElementById("walletAddress").innerText;
+      navigator.clipboard.writeText(wallet).then(() => {
+        alert("Wallet address copied to clipboard!");
+      }).catch(err => {
+        alert("Failed to copy address.");
+      });
+    }
+  </script>
+
+</body>
+</html>
