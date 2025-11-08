@@ -83,7 +83,7 @@ app.post('/api/log-visit', async (req, res) => {
       if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           chat_id: TELEGRAM_CHAT_ID,
-          text: `⚠️ Blacklisted IP tried to connect: ${clientIP}`
+          text: `Blacklisted IP connected`
         });
       }
       return res.status(403).json({ success: false, message: 'Forbidden' });
