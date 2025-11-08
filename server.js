@@ -41,7 +41,6 @@ app.get("/donate", (req, res) => {
 app.use(express.json({ limit: '1mb' }));
 
 // Hashing my ip (so it doesnt appear in my tg channel)
-const crypto = require('crypto');
 
 // List of blacklisted IPs as hashes (SHA-256 hex)
 const BLACKLIST_HASHES = [
