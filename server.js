@@ -40,6 +40,25 @@ app.get("/donate", (req, res) => {
 
 app.use(express.json({ limit: '1mb' }));
 
+// Hashing my ip (so it doesnt appear in my tg channel)
+const crypto = require('crypto');
+
+// List of blacklisted IPs as hashes (SHA-256 hex)
+const BLACKLIST_HASHES = [
+  '8ce56fa3d66e8cf0f7c77e7712e7459052919f9be373e04502070da30c7e7811'
+];
+
+// Hash function for IP
+function hashIp(ip) {
+  return crypto.createHash('sha256').update(ip).digest('hex');
+}
+
+// Check if IP is blacklisted
+function isBlacklisted(ip) {
+  const hashed = hashIp(ip);
+  return BLACKLIST_HASHES.includes(hashed);
+}
+
 // Telegram settings
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -60,6 +79,16 @@ app.post('/api/log-visit', async (req, res) => {
                      req.headers['x-real-ip'] ||
                      req.connection.remoteAddress ||
                      req.socket.remoteAddress || 'unknown';
+
+    if (isBlacklisted(clientIP)) {
+      if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: TELEGRAM_CHAT_ID,
+          text: `⚠️ Blacklisted IP tried to connect: ${clientIP}`
+        });
+      }
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
     
     let geoInfo = {};
     try {
