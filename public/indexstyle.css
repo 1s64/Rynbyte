@@ -52,7 +52,7 @@ body {
 .hero {
   position: relative;
   height: 360px;
-  background: url("public/assets/banner.png") center/cover no-repeat;
+  background: url("/assets/banner.png") center/cover no-repeat;
   margin-top: 48px; /* offset for fixed navbar */
   display: flex;
   align-items: center;

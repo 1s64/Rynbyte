@@ -21,12 +21,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files
-app.use('/public', express.static(path.join(__dirname, 'public'), {
+// Serve static files from the root
+app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.set('Cache-Control', 'public, max-age=3600');
   }
 }));
+
 
 // Route for homepage (optional, if not using index.html in public)
 app.get("/", (req, res) => {
