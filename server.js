@@ -33,11 +33,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Route for /donate
-app.get("/donate", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "donate.html"));
-});
-
 app.use(express.json({ limit: '1mb' }));
 
 // Hashing my ip (so it doesnt appear in my tg channel)
