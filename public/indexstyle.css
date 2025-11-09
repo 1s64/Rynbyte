@@ -52,7 +52,7 @@ body {
 .hero {
   position: relative;
   height: 360px;
-  background: url("assets/banner.png") center/cover no-repeat;
+  background: url("public/assets/banner.png") center/cover no-repeat;
   margin-top: 48px; /* offset for fixed navbar */
   display: flex;
   align-items: center;
@@ -147,9 +147,11 @@ body {
 .product-image img {
   width: 100%;
   height: 200px;
-  object-fit: cover;
+  object-fit: contain;
+  background-color: #111; /* optional: fill background */
   display: block;
 }
+
 
 .product-icon {
   position: absolute;
